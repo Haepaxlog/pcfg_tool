@@ -36,15 +36,31 @@ impl fmt::Display for ParseTree<String> {
     }
 }
 
+impl PartialEq for ParseTree<String> {
+    fn eq(&self, other: &Self) -> bool {
+        self.root == other.root && self.descendants == other.descendants
+    }
+}
+
 #[derive(Debug)]
 pub enum Descendants<T> {
     Atom(T),
     Expressions(Vec<ParseTree<T>>),
 }
 
+impl PartialEq for Descendants<String> {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Self::Atom(l0), Self::Atom(r0)) => l0 == r0,
+            (Self::Expressions(l0), Self::Expressions(r0)) => l0 == r0,
+            _ => false,
+        }
+    }
+}
+
 trait PTBExpressionParser {
-    fn parse(s: String) -> Result<ParseTree<String>, nom::error::Error<String>> {
-        match Self::expression.parse(s.as_str()) {
+    fn parse(s: &str) -> Result<ParseTree<String>, nom::error::Error<String>> {
+        match Self::expression.parse(s) {
             Ok((_input, tree)) => Ok(tree),
             Err(e) => match e {
                 nom::Err::Error(e) | nom::Err::Failure(e) => Err(nom::error::Error {
@@ -105,19 +121,81 @@ impl PTBExpressionParser for PTBParser {
 }
 
 impl PTBParser {
-    pub fn parse(s: String) -> Result<ParseTree<String>, nom::error::Error<String>> {
+    pub fn parse(s: &str) -> Result<ParseTree<String>, nom::error::Error<String>> {
         <Self as PTBExpressionParser>::parse(s)
     }
 }
 
 #[cfg(test)]
 mod tests {
+    use nom::ErrorConvert;
+
     use super::*;
 
     #[test]
-    fn parse() {
-        let input = String::from("(ROOT (S (NP-SBJ (NP (NNP Pierre) (NNP Vinken)) (, ,) (ADJP (NP (CD 61) (NNS years)) (JJ old)) (, ,)) (VP (MD will) (VP (VB join) (NP (DT the) (NN board)) (PP-CLR (IN as) (NP (DT a) (JJ nonexecutive) (NN director))) (NP-TMP (NNP Nov.) (CD 29)))) (. .)))");
+    fn parses_correct_tree() {
+        let input = "(ROOT (S (NP (NNP A)) (VP (VB screams))))";
         let tree = PTBParser::parse(input).expect("should be parsable");
-        println!("{}", tree);
+
+        assert_eq!(
+            tree,
+            ParseTree {
+                root: "ROOT".to_string(),
+                descendants: Descendants::Expressions(vec![ParseTree {
+                    root: "S".to_string(),
+                    descendants: Descendants::Expressions(vec![
+                        ParseTree {
+                            root: "NP".to_string(),
+                            descendants: Descendants::Expressions(vec![ParseTree {
+                                root: "NNP".to_string(),
+                                descendants: Descendants::Atom("A".to_string())
+                            }])
+                        },
+                        ParseTree {
+                            root: "VP".to_string(),
+                            descendants: Descendants::Expressions(vec![ParseTree {
+                                root: "VB".to_string(),
+                                descendants: Descendants::Atom("screams".to_string())
+                            }])
+                        }
+                    ])
+                }])
+            }
+        )
+    }
+
+    #[test]
+    fn empty_input() {
+        let input = "";
+        let _err = PTBParser::parse(input).expect_err("This should not be parsable");
+    }
+
+    #[test]
+    fn erroneous_input() {
+        let input = "(((NP)";
+        let _err = PTBParser::parse(input).expect_err("This should not be parsable");
+    }
+
+    #[test]
+    fn minimal_input() {
+        let input = "(A A)";
+        let tree = PTBParser::parse(input).expect("This should be parsable");
+        assert_eq!(
+            tree,
+            ParseTree {
+                root: "A".to_string(),
+                descendants: Descendants::Atom("A".to_string())
+            }
+        )
+    }
+
+    #[test]
+    fn generates_input_ptb_string() {
+        let input = "(ROOT (S (NP-SBJ (NP (NNP Pierre) (NNP Vinken)) (, ,) (ADJP (NP (CD 61) (NNS years)) (JJ old)) (, ,)) (VP (MD will) (VP (VB join) (NP (DT the) (NN board)) (PP-CLR (IN as) (NP (DT a) (JJ nonexecutive) (NN director))) (NP-TMP (NNP Nov.) (CD 29)))) (. .)))";
+        let output = PTBParser::parse(input)
+            .expect("This should be parsable")
+            .print();
+
+        assert_eq!(input, output)
     }
 }
