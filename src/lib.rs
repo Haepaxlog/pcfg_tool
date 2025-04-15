@@ -1,5 +1,7 @@
 use std::collections::HashMap;
 
+pub mod ptb;
+
 type Nonterminal = String;
 type Terminal = String;
 
