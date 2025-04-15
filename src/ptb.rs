@@ -1,3 +1,5 @@
+use core::fmt;
+
 use nom::branch::alt;
 use nom::bytes::complete::{is_not, tag};
 use nom::character::complete::multispace0;
@@ -9,6 +11,29 @@ use nom::{IResult, Parser};
 pub struct ParseTree<T> {
     root: T,
     descendants: Descendants<T>,
+}
+
+impl ParseTree<String> {
+    fn print(&self) -> String {
+        match &self.descendants {
+            Descendants::Atom(atom) => format!("({} {})", self.root, atom),
+            Descendants::Expressions(trees) => {
+                let tree_list = trees
+                    .iter()
+                    .map(|tree| Self::print(tree))
+                    .collect::<Vec<String>>()
+                    .join(" ");
+
+                format!("({} {})", self.root, tree_list)
+            }
+        }
+    }
+}
+
+impl fmt::Display for ParseTree<String> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.print())
+    }
 }
 
 #[derive(Debug)]
@@ -93,6 +118,6 @@ mod tests {
     fn parse() {
         let input = String::from("(ROOT (S (NP-SBJ (NP (NNP Pierre) (NNP Vinken)) (, ,) (ADJP (NP (CD 61) (NNS years)) (JJ old)) (, ,)) (VP (MD will) (VP (VB join) (NP (DT the) (NN board)) (PP-CLR (IN as) (NP (DT a) (JJ nonexecutive) (NN director))) (NP-TMP (NNP Nov.) (CD 29)))) (. .)))");
         let tree = PTBParser::parse(input).expect("should be parsable");
-        println!("{:?}", tree);
+        println!("{}", tree);
     }
 }
