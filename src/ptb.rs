@@ -7,10 +7,10 @@ use nom::multi::many1;
 use nom::sequence::delimited;
 use nom::{IResult, Parser};
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct ParseTree<T> {
-    root: T,
-    descendants: Descendants<T>,
+    pub root: T,
+    pub descendants: Descendants<T>,
 }
 
 impl ParseTree<String> {
@@ -36,26 +36,10 @@ impl fmt::Display for ParseTree<String> {
     }
 }
 
-impl PartialEq for ParseTree<String> {
-    fn eq(&self, other: &Self) -> bool {
-        self.root == other.root && self.descendants == other.descendants
-    }
-}
-
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Descendants<T> {
     Atom(T),
     Expressions(Vec<ParseTree<T>>),
-}
-
-impl PartialEq for Descendants<String> {
-    fn eq(&self, other: &Self) -> bool {
-        match (self, other) {
-            (Self::Atom(l0), Self::Atom(r0)) => l0 == r0,
-            (Self::Expressions(l0), Self::Expressions(r0)) => l0 == r0,
-            _ => false,
-        }
-    }
 }
 
 trait PTBExpressionParser {
