@@ -234,23 +234,175 @@ mod tests {
     use crate::ptb::PTBParser;
 
     use super::*;
-
     #[test]
-    fn read_off_rules() {
-        let input = "(ROOT (S (NP-SBJ (NP (NNP Pierre) (NNP Vinken)) (, ,) (ADJP (NP (CD 61) (NNS years)) (JJ old)) (, ,)) (VP (MD will) (VP (VB join) (NP (DT the) (NN board)) (PP-CLR (IN as) (NP (DT a) (JJ nonexecutive) (NN director))) (NP-TMP (NNP Nov.) (CD 29)))) (. .)))";
+    fn reads_off_rules_correctly() {
+        let input = "(S (NP (NNP Julius)) (VP (VB stabs) (NP (NN him))))";
         let output = PTBParser::parse(input).expect("This should be parsable");
 
-        let initial = String::from("ROOT");
-        let parse_trees = vec![output];
+        let initial = String::from("S");
+        let parse_tree = output;
 
-        let grammar = Grammar::from_parse_trees(initial as Nonterminal, parse_trees)
-            .expect("This should have a valid initial");
+        let rules = Grammar::read_rules(
+            &initial,
+            parse_tree,
+            |_initial: &str, parse_tree: ParseTree<String>| Some(parse_tree),
+        );
 
-        println!("{}", grammar);
+        assert!(rules.is_some());
+        assert_eq!(
+            HashSet::from_iter(rules.expect("This is Some").into_iter()) as HashSet<Rule>,
+            HashSet::from_iter(vec![
+                Rule {
+                    head: "S".to_string(),
+                    body: Body::NonLexical(vec!["NP".to_string(), "VP".to_string(),])
+                },
+                Rule {
+                    head: "NP".to_string(),
+                    body: Body::NonLexical(vec!["NNP".to_string()])
+                },
+                Rule {
+                    head: "NNP".to_string(),
+                    body: Body::Lexical("Julius".to_string())
+                },
+                Rule {
+                    head: "VP".to_string(),
+                    body: Body::NonLexical(vec!["VB".to_string(), "NP".to_string()])
+                },
+                Rule {
+                    head: "VB".to_string(),
+                    body: Body::Lexical("stabs".to_string())
+                },
+                Rule {
+                    head: "NP".to_string(),
+                    body: Body::NonLexical(vec!["NN".to_string()])
+                },
+                Rule {
+                    head: "NN".to_string(),
+                    body: Body::Lexical("him".to_string())
+                }
+            ])
+        );
     }
 
     #[test]
-    fn read_off_rules_simple() {
+    fn counts_correct_rule_occurence() {
+        let input = "(S (NP (VP some)) (NP (VP some)) (NP (VP other)))";
+        let output = PTBParser::parse(input).expect("This should be parsable");
+
+        let initial = String::from("S");
+        let parse_tree = output;
+
+        let rules = Grammar::read_rules(
+            &initial,
+            parse_tree,
+            |_initial: &str, parse_tree: ParseTree<String>| Some(parse_tree),
+        );
+
+        assert!(rules.is_some());
+
+        let mut occurence_rules: OccurenceRules = HashMap::new();
+        Grammar::count_rule_occurence(&mut occurence_rules, rules.expect("This is some"));
+
+        assert_eq!(
+            occurence_rules,
+            HashMap::from_iter(vec![
+                (
+                    Rule {
+                        head: "S".to_string(),
+                        body: Body::NonLexical(vec![
+                            "NP".to_string(),
+                            "NP".to_string(),
+                            "NP".to_string()
+                        ])
+                    },
+                    1
+                ),
+                (
+                    Rule {
+                        head: "NP".to_string(),
+                        body: Body::NonLexical(vec!["VP".to_string()])
+                    },
+                    3
+                ),
+                (
+                    Rule {
+                        head: "VP".to_string(),
+                        body: Body::Lexical("some".to_string())
+                    },
+                    2
+                ),
+                (
+                    Rule {
+                        head: "VP".to_string(),
+                        body: Body::Lexical("other".to_string())
+                    },
+                    1
+                )
+            ])
+        )
+    }
+
+    #[test]
+    fn normalises_rules_correctly() {
+        let input = "(S (NP (VP some)) (NP (VP some)) (NP (VP other)))";
+        let output = PTBParser::parse(input).expect("This should be parsable");
+
+        let initial = String::from("S");
+        let parse_tree = output;
+
+        let rules = Grammar::read_rules(
+            &initial,
+            parse_tree,
+            |_initial: &str, parse_tree: ParseTree<String>| Some(parse_tree),
+        );
+
+        assert!(rules.is_some());
+
+        let mut occurence_rules: OccurenceRules = HashMap::new();
+        Grammar::count_rule_occurence(&mut occurence_rules, rules.expect("This is some"));
+
+        let normalised_rules = Grammar::normalise_rules(occurence_rules);
+        assert_eq!(
+            normalised_rules,
+            HashMap::from_iter(vec![
+                (
+                    Rule {
+                        head: "S".to_string(),
+                        body: Body::NonLexical(vec![
+                            "NP".to_string(),
+                            "NP".to_string(),
+                            "NP".to_string()
+                        ])
+                    },
+                    1.0 as f64
+                ),
+                (
+                    Rule {
+                        head: "NP".to_string(),
+                        body: Body::NonLexical(vec!["VP".to_string()])
+                    },
+                    1.0 as f64
+                ),
+                (
+                    Rule {
+                        head: "VP".to_string(),
+                        body: Body::Lexical("some".to_string())
+                    },
+                    2.0 / 3.0 as f64
+                ),
+                (
+                    Rule {
+                        head: "VP".to_string(),
+                        body: Body::Lexical("other".to_string())
+                    },
+                    1.0 / 3.0 as f64
+                )
+            ])
+        )
+    }
+
+    #[test]
+    fn instantiates_correct_grammar() {
         let input = "(S (NP (NNP Julius)) (VP (VB stabs) (NP (NN him))))";
         let output = PTBParser::parse(input).expect("This should be parsable");
 
@@ -260,6 +412,109 @@ mod tests {
         let grammar = Grammar::from_parse_trees(initial as Nonterminal, parse_trees)
             .expect("This is a valid initial");
 
-        println!("{}", grammar);
+        assert_eq!(
+            grammar,
+            Grammar {
+                initial: "S".to_string(),
+                rules: HashMap::from_iter(vec![
+                    (
+                        Rule {
+                            head: "S".to_string(),
+                            body: Body::NonLexical(vec!["NP".to_string(), "VP".to_string(),])
+                        },
+                        1.0
+                    ),
+                    (
+                        Rule {
+                            head: "NP".to_string(),
+                            body: Body::NonLexical(vec!["NNP".to_string()])
+                        },
+                        0.5
+                    ),
+                    (
+                        Rule {
+                            head: "NNP".to_string(),
+                            body: Body::Lexical("Julius".to_string())
+                        },
+                        1.0
+                    ),
+                    (
+                        Rule {
+                            head: "VP".to_string(),
+                            body: Body::NonLexical(vec!["VB".to_string(), "NP".to_string()])
+                        },
+                        1.0
+                    ),
+                    (
+                        Rule {
+                            head: "VB".to_string(),
+                            body: Body::Lexical("stabs".to_string())
+                        },
+                        1.0
+                    ),
+                    (
+                        Rule {
+                            head: "NP".to_string(),
+                            body: Body::NonLexical(vec!["NN".to_string()])
+                        },
+                        0.5
+                    ),
+                    (
+                        Rule {
+                            head: "NN".to_string(),
+                            body: Body::Lexical("him".to_string())
+                        },
+                        1.0
+                    )
+                ])
+            }
+        )
+    }
+
+    #[test]
+    fn correct_nonterminals() {
+        let input = "(S (NP (NNP Julius)) (VP (VB stabs) (NP (NN him))))";
+        let output = PTBParser::parse(input).expect("This should be parsable");
+
+        let initial = String::from("S");
+        let parse_trees = vec![output];
+
+        let grammar = Grammar::from_parse_trees(initial as Nonterminal, parse_trees)
+            .expect("This is a valid initial");
+
+        let nonterminals = grammar.nonterminals();
+        assert_eq!(
+            HashSet::from_iter(nonterminals) as HashSet<Nonterminal>,
+            HashSet::from_iter(vec![
+                "S".to_string(),
+                "NP".to_string(),
+                "NNP".to_string(),
+                "VP".to_string(),
+                "VB".to_string(),
+                "NN".to_string()
+            ])
+        )
+    }
+
+    #[test]
+    fn correct_terminals() {
+        let input = "(S (NP (NNP Julius)) (VP (VB stabs) (NP (NN him))))";
+        let output = PTBParser::parse(input).expect("This should be parsable");
+
+        let initial = String::from("S");
+        let parse_trees = vec![output];
+
+        let grammar = Grammar::from_parse_trees(initial as Nonterminal, parse_trees)
+            .expect("This is a valid initial");
+
+        let nonterminals = grammar.terminals();
+        assert_eq!(
+            HashSet::from_iter(nonterminals) as HashSet<Terminal>,
+            HashSet::from_iter(vec![
+                "Julius".to_string(),
+                "stabs".to_string(),
+                "him".to_string()
+            ])
+        )
     }
 }

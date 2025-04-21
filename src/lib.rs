@@ -41,6 +41,7 @@ impl fmt::Display for Rule {
 type Probability = f64;
 type ProbabilityRules = HashMap<Rule, Probability>;
 
+#[derive(Debug, PartialEq)]
 struct Grammar {
     initial: Nonterminal,
     rules: ProbabilityRules,
