@@ -4,4 +4,5 @@ pcfg_tool:
 
 .PHONY: clean
 clean:
+	rm pcfg_tool
 	cargo clean
