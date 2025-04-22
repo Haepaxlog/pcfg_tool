@@ -2,13 +2,11 @@ use std::collections::{HashMap, HashSet, VecDeque};
 
 use crate::{
     ptb::{Descendants, ParseTree},
-    Body, Grammar, Nonterminal, Probability, ProbabilityRules, Rule, Terminal,
+    Body, Grammar, Nonterminal, OccurenceRules, Probability, ProbabilityRules, Rule, Terminal,
 };
 
-type OccurenceRules = HashMap<Rule, u32>;
-
 trait PCFGGrammar {
-    /// Given an initial and parse trees it reutrns a normalised grammar
+    /// Given an initial and parse trees it reuturns a normalised grammar
     fn from_parse_trees(
         initial: Nonterminal,
         parse_trees: Vec<ParseTree<String>>,
@@ -18,12 +16,14 @@ trait PCFGGrammar {
 
     fn normalise(&mut self);
 
-    /// Normalises a given ruleset with occurences into a ruleset with probabilites
-    fn normalise_rules(occurence_rules: OccurenceRules) -> ProbabilityRules;
-
     fn nonterminals(self) -> Vec<Nonterminal>;
 
     fn terminals(self) -> Vec<Terminal>;
+}
+
+trait PTBRuleInducer {
+    /// Normalises a given ruleset with occurences into a ruleset with probabilites
+    fn normalise_rules(occurence_rules: OccurenceRules) -> ProbabilityRules;
 
     /// Accumulates rules into occurence_rules thereby counting their occurence
     fn count_rule_occurence(occurence_rules: &mut OccurenceRules, rules: Vec<Rule>);
@@ -82,39 +82,6 @@ impl PCFGGrammar for Grammar {
         self.rules = Self::normalise_rules(occurence_rules);
     }
 
-    fn normalise_rules(occurence_rules: OccurenceRules) -> ProbabilityRules {
-        // Sort rules for their head (e.g. NP -> DT NN has head NP)
-        let sorted_rules =
-            occurence_rules
-                .into_iter()
-                .fold(HashMap::new(), |mut acc, (rule, occurence)| {
-                    let entry = acc
-                        .entry(rule.head.clone())
-                        .or_insert(Vec::<(Rule, u32)>::new());
-                    entry.push((rule, occurence));
-                    acc
-                });
-
-        // Calculate probabilites on the sorted rules
-        // rule_probability = rule_occurence / sum(rule_occurence_with_same_head)
-        sorted_rules
-            .into_iter()
-            .fold(HashMap::new(), |mut acc, (_head, occurence_rules)| {
-                let total_head_occurences: Probability = occurence_rules
-                    .iter()
-                    .map(|(_head, occurence)| *occurence as f64)
-                    .sum();
-
-                occurence_rules.into_iter().for_each(|(rule, occurence)| {
-                    acc.insert(
-                        rule,
-                        occurence as Probability / total_head_occurences as Probability,
-                    );
-                });
-                acc
-            })
-    }
-
     fn nonterminals(self) -> Vec<Nonterminal> {
         let mut nonterminals: HashSet<Nonterminal> = HashSet::new();
         // The grammar's intitial must be by defintion a Nonterminal
@@ -149,6 +116,41 @@ impl PCFGGrammar for Grammar {
         }
 
         terminals.into_iter().collect()
+    }
+}
+
+impl PTBRuleInducer for Grammar {
+    fn normalise_rules(occurence_rules: OccurenceRules) -> ProbabilityRules {
+        // Sort rules for their head (e.g. NP -> DT NN has head NP)
+        let sorted_rules =
+            occurence_rules
+                .into_iter()
+                .fold(HashMap::new(), |mut acc, (rule, occurence)| {
+                    let entry = acc
+                        .entry(rule.head.clone())
+                        .or_insert(Vec::<(Rule, u32)>::new());
+                    entry.push((rule, occurence));
+                    acc
+                });
+
+        // Calculate probabilites on the sorted rules
+        // rule_probability = rule_occurence / sum(rule_occurence_with_same_head)
+        sorted_rules
+            .into_iter()
+            .fold(HashMap::new(), |mut acc, (_head, occurence_rules)| {
+                let total_head_occurences: Probability = occurence_rules
+                    .iter()
+                    .map(|(_head, occurence)| *occurence as f64)
+                    .sum();
+
+                occurence_rules.into_iter().for_each(|(rule, occurence)| {
+                    acc.insert(
+                        rule,
+                        occurence as Probability / total_head_occurences as Probability,
+                    );
+                });
+                acc
+            })
     }
 
     fn count_rule_occurence(occurence_rules: &mut OccurenceRules, rules: Vec<Rule>) {

@@ -39,7 +39,10 @@ impl fmt::Display for Rule {
 }
 
 type Probability = f64;
+type Occurence = u32;
+
 type ProbabilityRules = HashMap<Rule, Probability>;
+type OccurenceRules = HashMap<Rule, Occurence>;
 
 #[derive(Debug, PartialEq)]
 struct Grammar {
