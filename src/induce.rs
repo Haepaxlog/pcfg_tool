@@ -5,7 +5,7 @@ use crate::{
     Body, Grammar, Nonterminal, OccurenceRules, Probability, ProbabilityRules, Rule, Terminal,
 };
 
-trait PCFGGrammar {
+pub trait PCFGGrammar {
     /// Given an initial and parse trees it reuturns a normalised grammar
     fn from_parse_trees(
         initial: Nonterminal,
@@ -16,9 +16,13 @@ trait PCFGGrammar {
 
     fn normalise(&mut self);
 
-    fn nonterminals(self) -> Vec<Nonterminal>;
+    fn nonlexical_rules(&self) -> ProbabilityRules;
 
-    fn terminals(self) -> Vec<Terminal>;
+    fn lexical_rules(&self) -> ProbabilityRules;
+
+    fn nonterminals(&self) -> Vec<Nonterminal>;
+
+    fn terminals(&self) -> Vec<Terminal>;
 }
 
 trait PTBRuleInducer {
@@ -82,10 +86,11 @@ impl PCFGGrammar for Grammar {
         self.rules = Self::normalise_rules(occurence_rules);
     }
 
-    fn nonterminals(self) -> Vec<Nonterminal> {
+    fn nonterminals(&self) -> Vec<Nonterminal> {
         let mut nonterminals: HashSet<Nonterminal> = HashSet::new();
+        // TODO: Should this be written into the nonterminals ??
         // The grammar's intitial must be by defintion a Nonterminal
-        nonterminals.insert(self.initial);
+        nonterminals.insert((*self.initial).to_string());
 
         for rule in self.rules.keys() {
             // The head must always be a nonterminal
@@ -103,7 +108,7 @@ impl PCFGGrammar for Grammar {
         nonterminals.into_iter().collect()
     }
 
-    fn terminals(self) -> Vec<Terminal> {
+    fn terminals(&self) -> Vec<Terminal> {
         let mut terminals: HashSet<Terminal> = HashSet::new();
 
         for rule in self.rules.keys() {
@@ -116,6 +121,30 @@ impl PCFGGrammar for Grammar {
         }
 
         terminals.into_iter().collect()
+    }
+
+    fn nonlexical_rules(&self) -> ProbabilityRules {
+        let mut rules = self.rules.clone();
+
+        for (rule, _probability) in self.rules.iter() {
+            if rule.is_lexical_rule() {
+                rules.remove(rule);
+            }
+        }
+
+        rules
+    }
+
+    fn lexical_rules(&self) -> ProbabilityRules {
+        let mut rules = self.rules.clone();
+
+        for (rule, _probability) in self.rules.iter() {
+            if !rule.is_lexical_rule() {
+                rules.remove(rule);
+            }
+        }
+
+        rules
     }
 }
 
