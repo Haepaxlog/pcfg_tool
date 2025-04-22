@@ -76,9 +76,15 @@ fn main() {
                         let berkeley_writer = BerkeleyWriter::from_grammar(g);
 
                         let mut stdout = std::io::stdout();
-                        berkeley_writer.rules_io(&mut stdout).expect("works");
-                        berkeley_writer.lexicon_io(&mut stdout).expect("works");
-                        berkeley_writer.words_io(&mut stdout).expect("works");
+                        berkeley_writer
+                            .rules_io(&mut stdout)
+                            .expect("Unable to write to stdout");
+                        berkeley_writer
+                            .lexicon_io(&mut stdout)
+                            .expect("Unable to write to stdout");
+                        berkeley_writer
+                            .words_io(&mut stdout)
+                            .expect("Unable to write to stdout");
 
                         stdout.flush().expect("works");
                     }
