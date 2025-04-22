@@ -87,10 +87,13 @@ impl PTBExpressionParser for PTBParser {
     }
 
     fn expression(input: &str) -> IResult<&str, ParseTree<String>> {
+        let lparen = delimited(multispace0, tag("("), multispace0);
+        let rparen = delimited(multispace0, tag(")"), multispace0);
+
         let (input, (head, tail)) = delimited(
-            tag("("),
+            lparen,
             (Self::head, alt((Self::atom, Self::expression_list))),
-            tag(")"),
+            rparen,
         )
         .parse(input)?;
 
@@ -181,5 +184,30 @@ mod tests {
             .print();
 
         assert_eq!(input, output)
+    }
+
+    #[test]
+    fn wild_spaces() {
+        let input = " (S (NP ( NP \t John   ) (NP Maria )) ) ";
+        let tree = PTBParser::parse(input).expect("This should be parsable");
+        assert_eq!(
+            tree,
+            ParseTree {
+                root: "S".to_string(),
+                descendants: Descendants::Expressions(vec![ParseTree {
+                    root: "NP".to_string(),
+                    descendants: Descendants::Expressions(vec![
+                        ParseTree {
+                            root: "NP".to_string(),
+                            descendants: Descendants::Atom("John".to_string())
+                        },
+                        ParseTree {
+                            root: "NP".to_string(),
+                            descendants: Descendants::Atom("Maria".to_string())
+                        }
+                    ])
+                }])
+            }
+        )
     }
 }
