@@ -262,6 +262,8 @@ fn first_matching_subtree(
 
 #[cfg(test)]
 mod tests {
+    use core::f64;
+
     use crate::ptb::PTBParser;
 
     use super::*;
@@ -547,5 +549,32 @@ mod tests {
                 "him".to_string()
             ])
         )
+    }
+
+    #[test]
+    fn probabilities_add_to_one() {
+        let input = vec!["(ROOT (S (NP-SBJ (NP (NNP Pierre) (NNP Vinken)) (, ,) (ADJP (NP (CD 61) (NNS years)) (JJ old)) (, ,)) (VP (MD will) (VP (VB join) (NP (DT the) (NN board)) (PP-CLR (IN as) (NP (DT a) (JJ nonexecutive) (NN director))) (NP-TMP (NNP Nov.) (CD 29)))) (. .)))", "(ROOT (S (NP-SBJ (NNP Mr.) (NNP Vinken)) (VP (VBZ is) (NP-PRD (NP (NN chairman)) (PP (IN of) (NP (NP (NNP Elsevier) (NNP N.V.)) (, ,) (NP (DT the) (NNP Dutch) (VBG publishing) (NN group)))))) (. .)))", "(ROOT (S (NP-SBJ (NP (NNP Rudolph) (NNP Agnew)) (, ,) (UCP (ADJP (NP (CD 55) (NNS years)) (JJ old)) (CC and) (NP (NP (JJ former) (NN chairman)) (PP (IN of) (NP (NNP Consolidated) (NNP Gold) (NNP Fields) (NNP PLC))))) (, ,)) (VP (VBD was) (VP (VBN named) (NP (NP (DT a) (JJ nonexecutive) (NN director)) (PP (IN of) (NP (DT this) (JJ British) (JJ industrial) (NN conglomerate)))))) (. .)))", "(ROOT (S (S-TPC (NP-SBJ (NP (NP (DT A) (NN form)) (PP (IN of) (NP (NN asbestos)))) (RRC (ADVP-TMP (RB once)) (VP (VBN used) (S-CLR (VP (TO to) (VP (VB make) (NP (NNP Kent) (NN cigarette) (NNS filters)))))))) (VP (VBZ has) (VP (VBN caused) (S (NP-SBJ (NP (DT a) (JJ high) (NN percentage)) (PP (IN of) (NP (NN cancer) (NNS deaths))) (PP-LOC (IN among) (NP (NP (DT a) (NN group)) (PP (IN of) (NP (NNS workers)))))) (VP (VBN exposed) (PP-CLR (TO to) (NP (PRP it))) (ADVP-TMP (NP (QP (RBR more) (IN than) (CD 30)) (NNS years)) (IN ago))))))) (, ,) (NP-SBJ (NNS researchers)) (VP (VBD reported)) (. .)))", "(ROOT (S (S-TPC (NP-SBJ (NP (DT The) (NN asbestos) (NN fiber)) (, ,) (NP (NN crocidolite)) (, ,)) (VP (VBZ is) (ADJP-PRD (RB unusually) (JJ resilient)) (SBAR-TMP (IN once) (S (NP-SBJ (PRP it)) (VP (VBZ enters) (NP (DT the) (NNS lungs))))) (, ,) (PP (IN with) (NP (NP (NP (RB even) (JJ brief) (NNS exposures)) (PP-DIR (TO to) (NP (PRP it)))) (PP (VBG causing) (NP (NNS symptoms))) (SBAR (WHNP (WDT that)) (S (VP (VBP show) (PRT (RP up)) (ADVP-TMP (NP (NNS decades)) (JJ later))))))))) (, ,) (NP-SBJ (NNS researchers)) (VP (VBD said)) (. .)))"];
+        let parse_trees: Vec<ParseTree<String>> = input
+            .into_iter()
+            .map(|input| PTBParser::parse(input).expect("This should be parsable"))
+            .collect();
+
+        let initial = String::from("ROOT");
+
+        let grammar = Grammar::from_parse_trees(initial as Nonterminal, parse_trees)
+            .expect("This is a valid initial");
+
+        let mut sum_head = HashMap::new();
+        for (rule, probability) in grammar.rules.iter() {
+            *sum_head.entry(rule.head.clone()).or_insert(0.0) += probability;
+        }
+
+        // We should compare against the machine epsilon to assert equality, since there are rounding errors associated with IEEE 754
+        let epsilon = f64::EPSILON;
+        let approx_equal = |a: f64, b: f64| -> bool { (a - b).abs() <= epsilon };
+
+        for (_head, total) in sum_head.iter() {
+            assert!(approx_equal(*total, 1.0));
+        }
     }
 }
