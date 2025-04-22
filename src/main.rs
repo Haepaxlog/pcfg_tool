@@ -1,10 +1,7 @@
-use std::{
-    fs::File,
-    io::{BufRead, Write},
-};
+use std::{fs::File, io::Write};
 
 use pcfg_tool::{
-    berkeley::{self, BerkeleyFormatWriter, BerkeleyWriter},
+    berkeley::{BerkeleyFormatWriter, BerkeleyWriter},
     cli::{Cli, CommandFactory, Commands, Parser},
     induce::PCFGGrammar,
     ptb::PTBParser,
@@ -18,7 +15,7 @@ fn main() {
         Some(Commands::Induce { grammar }) => {
             if let Some(gname) = grammar {
                 let mut trees = Vec::new();
-                for (i, line) in std::io::stdin().lock().lines().enumerate() {
+                for (i, line) in std::io::stdin().lines().enumerate() {
                     match line {
                         Ok(line) => match PTBParser::parse(&line) {
                             Ok(tree) => trees.push(tree),
@@ -59,7 +56,7 @@ fn main() {
                 }
             } else {
                 let mut trees = Vec::new();
-                for (i, line) in std::io::stdin().lock().lines().enumerate() {
+                for (i, line) in std::io::stdin().lines().enumerate() {
                     match line {
                         Ok(line) => match PTBParser::parse(&line) {
                             Ok(tree) => trees.push(tree),
@@ -75,7 +72,16 @@ fn main() {
                 let grammar = Grammar::from_parse_trees(initial.to_string(), trees);
 
                 match grammar {
-                    Ok(g) => println!("{g}"),
+                    Ok(g) => {
+                        let berkeley_writer = BerkeleyWriter::from_grammar(g);
+
+                        let mut stdout = std::io::stdout();
+                        berkeley_writer.rules_io(&mut stdout).expect("works");
+                        berkeley_writer.lexicon_io(&mut stdout).expect("works");
+                        berkeley_writer.words_io(&mut stdout).expect("works");
+
+                        stdout.flush().expect("works");
+                    }
                     Err(e) => eprintln!("Error while creating PCFG from trees: {}", e),
                 }
             }

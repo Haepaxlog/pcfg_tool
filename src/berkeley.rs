@@ -1,3 +1,5 @@
+use std::io::{BufWriter, Write};
+
 use crate::{induce::PCFGGrammar, Grammar};
 
 pub trait BerkeleyFormatWriter {
@@ -69,9 +71,12 @@ impl BerkeleyFormatWriter for BerkeleyWriter {
     where
         F: std::io::Write,
     {
+        let mut w = BufWriter::new(f);
         for (rule, probability) in self.grammar.nonlexical_rules() {
-            writeln!(f, "{} {}", rule, probability)?;
+            w.write_all(format!("{} {}\n", rule, probability).as_bytes())?;
         }
+
+        w.flush()?;
 
         Ok(())
     }
@@ -80,9 +85,12 @@ impl BerkeleyFormatWriter for BerkeleyWriter {
     where
         F: std::io::Write,
     {
+        let mut w = BufWriter::new(f);
         for (rule, probability) in self.grammar.lexical_rules() {
-            writeln!(f, "{} {}", rule, probability)?;
+            w.write_all(format!("{} {}\n", rule, probability).as_bytes())?;
         }
+
+        w.flush()?;
 
         Ok(())
     }
@@ -91,9 +99,12 @@ impl BerkeleyFormatWriter for BerkeleyWriter {
     where
         F: std::io::Write,
     {
+        let mut w = BufWriter::new(f);
         for terminal in self.grammar.terminals() {
-            writeln!(f, "{}", terminal)?;
+            w.write_all(format!("{}\n", terminal).as_bytes())?;
         }
+
+        w.flush()?;
 
         Ok(())
     }
