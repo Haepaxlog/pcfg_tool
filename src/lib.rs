@@ -1,6 +1,7 @@
 use core::fmt;
 use std::collections::HashMap;
 
+pub mod cli;
 pub mod induce;
 pub mod ptb;
 

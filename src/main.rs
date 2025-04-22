@@ -1,21 +1,4 @@
-use clap::{CommandFactory, Parser, Subcommand};
-
-#[derive(Parser)]
-#[command(version, about, long_about = None)]
-struct Cli {
-    #[command(subcommand)]
-    command: Option<Commands>,
-}
-
-#[derive(Subcommand)]
-enum Commands {
-    /// Reads a sequence of contituent trees from the stdin and prints an induced PCFG to the stdout
-    Induce {
-        /// If this is set, the induced grammar is written into GRAMMAR.rules , GRAMMAR.lexicon, and GRAMMAR.words files instead of the stdout
-        #[arg(short, long)]
-        grammar: Option<String>,
-    },
-}
+use pcfg_tool::cli::{Cli, CommandFactory, Commands, Parser};
 
 fn main() {
     let cli = Cli::parse();
