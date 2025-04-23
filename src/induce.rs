@@ -224,6 +224,7 @@ impl PTBRuleInducer for Grammar {
 
 // NOTE: Currently unused
 /// Traverses the tree breadth-first until we hit the first subtree root that matches the intial
+#[allow(unused)]
 fn first_matching_subtree(
     initial: &str,
     parse_tree: ParseTree<String>,
