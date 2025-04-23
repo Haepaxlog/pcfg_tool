@@ -1,11 +1,11 @@
 use std::{fs::File, io::Write};
 
 use pcfg_tool::{
+    Grammar,
     berkeley::{BerkeleyFormatWriter, BerkeleyWriter},
     cli::{Cli, CommandFactory, Commands, Parser},
     induce::PCFGGrammar,
     ptb::PTBParser,
-    Grammar,
 };
 
 fn main() {

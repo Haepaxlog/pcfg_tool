@@ -51,8 +51,8 @@ trait PTBExpressionParser {
                     input: String::from(e.input),
                     code: e.code,
                 }),
-                nom::Err::Incomplete(e) => Err(nom::error::Error {
-                    input: String::from(s.clone()),
+                nom::Err::Incomplete(_e) => Err(nom::error::Error {
+                    input: String::from(s.to_string()),
                     code: nom::error::ErrorKind::Fail,
                 }),
             },
@@ -115,8 +115,6 @@ impl PTBParser {
 
 #[cfg(test)]
 mod tests {
-    use nom::ErrorConvert;
-
     use super::*;
 
     #[test]
