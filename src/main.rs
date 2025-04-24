@@ -1,11 +1,11 @@
-use std::{fs::File, io::Write};
+use std::{fs::File, io::Write, process::exit};
 
 use pcfg_tool::{
-    Grammar,
     berkeley::{BerkeleyFormatWriter, BerkeleyWriter},
     cli::{Cli, CommandFactory, Commands, Parser},
     induce::PCFGGrammar,
     ptb::PTBParser,
+    Grammar,
 };
 
 fn main() {
@@ -20,10 +20,14 @@ fn main() {
                         Ok(line) => match PTBParser::parse(&line) {
                             Ok(tree) => trees.push(tree),
                             Err(e) => {
-                                eprintln!("Error while parsing tree {} at line {}: {}", line, i, e)
+                                eprintln!("Error while parsing tree {} at line {}: {}", line, i, e);
+                                exit(1);
                             }
                         },
-                        Err(e) => eprintln!("Error on line {}: {}", i, e),
+                        Err(e) => {
+                            eprintln!("Error on line {}: {}", i, e);
+                            exit(1);
+                        }
                     }
                 }
 
@@ -52,7 +56,10 @@ fn main() {
                             .words_io(&mut words)
                             .expect("Couldn't write words file");
                     }
-                    Err(e) => eprintln!("Error while creating PCFG from trees: {}", e),
+                    Err(e) => {
+                        eprintln!("Error while creating PCFG from trees: {}", e);
+                        exit(1);
+                    }
                 }
             } else {
                 let mut trees = Vec::new();
@@ -61,10 +68,14 @@ fn main() {
                         Ok(line) => match PTBParser::parse(&line) {
                             Ok(tree) => trees.push(tree),
                             Err(e) => {
-                                eprintln!("Error while parsing tree {} at line {}: {}", line, i, e)
+                                eprintln!("Error while parsing tree {} at line {}: {}", line, i, e);
+                                exit(1);
                             }
                         },
-                        Err(e) => eprintln!("Error on line {}: {}", i, e),
+                        Err(e) => {
+                            eprintln!("Error on line {}: {}", i, e);
+                            exit(1);
+                        }
                     }
                 }
 
@@ -88,7 +99,10 @@ fn main() {
 
                         stdout.flush().expect("works");
                     }
-                    Err(e) => eprintln!("Error while creating PCFG from trees: {}", e),
+                    Err(e) => {
+                        eprintln!("Error while creating PCFG from trees: {}", e);
+                        exit(1);
+                    }
                 }
             }
         }
